@@ -1,0 +1,8 @@
+# Host-side
+.DS_Store
+.vscode/
+__pycache__/
+*.pyc
+
+# Do not commit secrets on purpose
+src/secrets.py
