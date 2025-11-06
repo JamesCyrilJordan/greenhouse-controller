@@ -43,6 +43,9 @@ README.md   # Project documentation
 LICENSE     # License information
 ```
 
+## Branch naming
+The primary branch of this repository is `main`, renamed from the legacy `master` name to align with modern Git conventions.
+
 ## Configuration reference
 The key configuration values are defined near the top of `main.py`:
 
