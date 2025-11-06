@@ -70,7 +70,9 @@ def _install_stub_modules():
 
 _install_stub_modules()
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-main = importlib.import_module("main")
+hardware = importlib.import_module("greenhouse_controller.hardware")
+sensors = importlib.import_module("greenhouse_controller.sensors")
+utils = importlib.import_module("greenhouse_controller.utils")
 
 
 class RelayStub:
@@ -105,17 +107,17 @@ class SensorStub:
 @pytest.fixture(autouse=True)
 def _patch_sleep(monkeypatch):
     # Avoid waiting in tests when retry logic sleeps.
-    monkeypatch.setattr(main.time, "sleep", lambda _seconds: None)
+    monkeypatch.setattr(sensors.time, "sleep", lambda _seconds: None)
 
 
 def test_c_to_f_conversion():
-    assert main.c_to_f(0) == pytest.approx(32.0)
-    assert main.c_to_f(25) == pytest.approx(77.0)
+    assert sensors.c_to_f(0) == pytest.approx(32.0)
+    assert sensors.c_to_f(25) == pytest.approx(77.0)
 
 
 def test_control_heater_turns_on_when_below_threshold():
     relay = RelayStub()
-    heater_on = main.control_heater(relay, False, main.LOW_THRESHOLD - 5)
+    heater_on = hardware.control_heater(relay, False, utils.LOW_THRESHOLD - 5)
 
     assert heater_on is True
     assert relay.values == [0]
@@ -123,7 +125,7 @@ def test_control_heater_turns_on_when_below_threshold():
 
 def test_control_heater_turns_off_when_above_threshold():
     relay = RelayStub()
-    heater_on = main.control_heater(relay, True, main.HIGH_THRESHOLD + 5)
+    heater_on = hardware.control_heater(relay, True, utils.HIGH_THRESHOLD + 5)
 
     assert heater_on is False
     assert relay.values == [1]
@@ -131,7 +133,11 @@ def test_control_heater_turns_off_when_above_threshold():
 
 def test_control_heater_keeps_state_within_band():
     relay = RelayStub()
-    heater_on = main.control_heater(relay, True, (main.LOW_THRESHOLD + main.HIGH_THRESHOLD) / 2)
+    heater_on = hardware.control_heater(
+        relay,
+        True,
+        (utils.LOW_THRESHOLD + utils.HIGH_THRESHOLD) / 2,
+    )
 
     assert heater_on is True
     assert relay.values == []
@@ -144,7 +150,7 @@ def test_read_environment_retries_then_succeeds():
         failures=[OSError("temporary failure")],
     )
 
-    temp_f, humidity = main.read_environment(sensor)
+    temp_f, humidity = sensors.read_environment(sensor)
 
     assert temp_f == pytest.approx(68.0)
     assert humidity == pytest.approx(40)
@@ -156,17 +162,17 @@ def test_read_environment_raises_runtime_error_after_failures(monkeypatch):
         humidity=40,
         failures=[ValueError("bad read"), OSError("still bad")],
     )
-    monkeypatch.setattr(main, "MAX_SENSOR_ATTEMPTS", 2)
+    monkeypatch.setattr(utils, "MAX_SENSOR_ATTEMPTS", 2)
 
     with pytest.raises(RuntimeError) as excinfo:
-        main.read_environment(sensor)
+        sensors.read_environment(sensor)
 
     assert "Sensor failed after" in str(excinfo.value)
 
 
 def test_validate_config_rejects_invalid_thresholds(monkeypatch):
-    monkeypatch.setattr(main, "LOW_THRESHOLD", 60.0)
-    monkeypatch.setattr(main, "HIGH_THRESHOLD", 55.0)
+    monkeypatch.setattr(utils, "LOW_THRESHOLD", 60.0)
+    monkeypatch.setattr(utils, "HIGH_THRESHOLD", 55.0)
 
     with pytest.raises(ValueError):
-        main.validate_config()
+        utils.validate_config()
