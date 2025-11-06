@@ -24,7 +24,11 @@ def current_millis():
 
 def log(level, message):
     timestamp = current_millis()
-    print(f"[{timestamp:>10} ms] {level.upper():<5} {message}")
+    print("[{timestamp:>10} ms] {level:<5} {message}".format(
+        timestamp=timestamp,
+        level=level.upper(),
+        message=message,
+    ))
 
 
 def validate_config():
@@ -44,7 +48,7 @@ def initialize_hardware():
         oled = ssd1306.SSD1306_I2C(128, 64, i2c)
         log("info", "Display initialised")
     except Exception as exc:
-        log("error", f"Display initialisation failed: {exc}")
+        log("error", "Display initialisation failed: {exc}".format(exc=exc))
 
     return sensor, relay, oled
 
@@ -68,14 +72,18 @@ class DisplayManager:
             return True
         except Exception as exc:
             self._failed = True
-            log("error", f"Display failure: {exc}")
+            log("error", "Display failure: {exc}".format(exc=exc))
             log("warn", fallback_message)
             return False
 
     def show_status(self, temp_f, humidity, heater_on):
+        heater_label = "ON" if heater_on else "OFF"
         message = (
-            f"Temp: {temp_f:.1f}°F | Humidity: {humidity:.1f}% | "
-            f"Heater: {'ON' if heater_on else 'OFF'}"
+            "Temp: {temp:.1f}°F | Humidity: {hum:.1f}% | Heater: {heater}".format(
+                temp=temp_f,
+                hum=humidity,
+                heater=heater_label,
+            )
         )
 
         if self._failed:
@@ -85,9 +93,9 @@ class DisplayManager:
         def draw():
             self._oled.fill(0)
             self._oled.text("Greenhouse Monitor", 0, 0)
-            self._oled.text(f"Temp: {temp_f:.1f} F", 0, 20)
-            self._oled.text(f"Hum:  {humidity:.1f} %", 0, 35)
-            self._oled.text(f"Heater: {'ON' if heater_on else 'OFF'}", 0, 50)
+            self._oled.text("Temp: {:.1f} F".format(temp_f), 0, 20)
+            self._oled.text("Hum:  {:.1f} %".format(humidity), 0, 35)
+            self._oled.text("Heater: {}".format(heater_label), 0, 50)
             self._oled.show()
 
         if self._safe_call(draw, "Display unavailable; status logged to console"):
@@ -95,7 +103,11 @@ class DisplayManager:
 
     def show_message(self, line1, line2="", line3=""):
         if self._failed:
-            log("info", f"{line1} {line2} {line3}".strip())
+            log("info", "{line1} {line2} {line3}".format(
+                line1=line1,
+                line2=line2,
+                line3=line3,
+            ).strip())
             return
 
         def draw():
@@ -125,10 +137,22 @@ def read_environment(sensor):
             return temp_f, humidity
         except (OSError, ValueError) as exc:
             last_error = exc
-            log("warn", f"Sensor read failed (attempt {attempt}/{MAX_SENSOR_ATTEMPTS}): {exc}")
+            log(
+                "warn",
+                "Sensor read failed (attempt {attempt}/{max_attempts}): {exc}".format(
+                    attempt=attempt,
+                    max_attempts=MAX_SENSOR_ATTEMPTS,
+                    exc=exc,
+                ),
+            )
             time.sleep(SENSOR_RETRY_DELAY)
 
-    raise RuntimeError(f"Sensor failed after {MAX_SENSOR_ATTEMPTS} attempts: {last_error}")
+    raise RuntimeError(
+        "Sensor failed after {max_attempts} attempts: {error}".format(
+            max_attempts=MAX_SENSOR_ATTEMPTS,
+            error=last_error,
+        )
+    )
 
 
 def control_heater(relay, heater_on, temp_f):
