@@ -73,6 +73,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 hardware = importlib.import_module("greenhouse_controller.hardware")
 sensors = importlib.import_module("greenhouse_controller.sensors")
 utils = importlib.import_module("greenhouse_controller.utils")
+main_module = importlib.import_module("main")
 
 
 class RelayStub:
@@ -176,3 +177,58 @@ def test_validate_config_rejects_invalid_thresholds(monkeypatch):
 
     with pytest.raises(ValueError):
         utils.validate_config()
+
+
+def test_main_enforces_periodic_cooldown(monkeypatch):
+    relay = RelayStub()
+    sensor = SensorStub(temp_c=5, humidity=40)
+
+    class DisplayStub:
+        def __init__(self, _oled):
+            self.statuses = []
+            self.messages = []
+
+        def show_status(self, temp_f, humidity, heater_on):
+            self.statuses.append((temp_f, humidity, heater_on))
+
+        def show_message(self, *lines):
+            self.messages.append(lines)
+
+    class FakeTime:
+        def __init__(self):
+            self.now = 0
+
+        def time(self):
+            return self.now
+
+        def sleep(self, seconds):
+            self.now += seconds
+
+    fake_time = FakeTime()
+
+    monkeypatch.setattr(
+        main_module,
+        "time",
+        types.SimpleNamespace(time=fake_time.time, sleep=fake_time.sleep),
+    )
+    monkeypatch.setattr(main_module, "POLL_INTERVAL", 60)
+    monkeypatch.setattr(
+        main_module,
+        "initialize_hardware",
+        lambda: (sensor, relay, None),
+    )
+    monkeypatch.setattr(main_module, "DisplayManager", DisplayStub)
+
+    call_count = {"count": 0}
+
+    def fake_read_environment(_sensor):
+        call_count["count"] += 1
+        if call_count["count"] > 12:
+            raise KeyboardInterrupt
+        return utils.LOW_THRESHOLD - 10, 35
+
+    monkeypatch.setattr(main_module, "read_environment", fake_read_environment)
+
+    main_module.main()
+
+    assert relay.values[:3] == [0, 1, 0]
