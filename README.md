@@ -4,7 +4,7 @@ This project provides a MicroPython script that monitors temperature and humidit
 
 ## Features
 - Periodically samples a DHT11 temperature/humidity sensor with retry logic for transient failures.
-- Drives a relay connected to a heater to keep the greenhouse within a target temperature range.
+- Drives relays connected to both a heater and a ventilation fan to keep the greenhouse within a target temperature range.
 - Presents status information on an SSD1306 OLED display (or logs to the console if the display is missing).
 - Validates configuration at start-up to avoid misconfigured thresholds.
 - Structured logging with timestamps for easier debugging in the field.
@@ -12,14 +12,17 @@ This project provides a MicroPython script that monitors temperature and humidit
 ## Hardware requirements
 - Raspberry Pi Pico or Pico W running MicroPython.
 - DHT11 sensor module connected to the GPIO pin defined in `SENSOR_PIN` (default `GP15`).
-- Relay module wired to `RELAY_PIN` (default `GP16`) that controls the heater. The script assumes an active-low relay (setting the pin LOW turns the heater on).
+- Relay modules wired to `RELAY_PIN` (default `GP16`) for the heater and `FAN_PIN` (default `GP17`) for the fan. The script assumes active-low relays (setting the pin LOW energises the device).
 - Optional 128×64 SSD1306 OLED display connected via I²C (default pins `GP0` for SDA and `GP1` for SCL).
 
 Update the pin assignments near the top of `main.py` if your wiring differs. Ensure that the relay is rated for the heater load and that you follow all electrical safety guidelines.
 
 ## Deploying on the Pico
 1. Flash MicroPython to the Pico using the official instructions from the Raspberry Pi documentation.
-2. Copy `main.py` to the Pico using `mpremote`, `rshell`, Thonny, or your preferred deployment tool.
+2. Copy the following items to the Pico using `mpremote`, `rshell`, Thonny, or your preferred deployment tool:
+   - `main.py`
+   - The entire `greenhouse_controller/` directory (preserves the heater/fan control logic, display helpers, and sensor utilities)
+   - `wifi_manager.py` and `logger.py` if you plan to use Wi-Fi logging; omit them for an offline installation
 3. If you want the controller to run automatically on boot, store it on the device as `main.py` or invoke `main.main()` from your own boot script.
 4. Reset the board; the controller will begin sampling the sensor and toggling the heater as needed.
 
@@ -53,9 +56,11 @@ The key configuration values are defined near the top of `main.py`:
 | ------- | ----------- | ------- |
 | `SENSOR_PIN` | GPIO pin used for the DHT11 data line. | `15` |
 | `RELAY_PIN` | GPIO pin used to drive the relay controlling the heater. | `16` |
+| `FAN_PIN` | GPIO pin used to drive the relay controlling the ventilation fan. | `17` |
 | `I2C_SCL_PIN` / `I2C_SDA_PIN` | Pins for the I²C bus when using the OLED display. | `1` / `0` |
 | `LOW_THRESHOLD` | Temperature in °F at which the heater turns on. | `50.0` |
 | `HIGH_THRESHOLD` | Temperature in °F at which the heater turns off. | `55.0` |
+| `FAN_THRESHOLD` | Temperature in °F at which the fan turns on (turns off 2°F below this). | `80.0` |
 | `POLL_INTERVAL` | Seconds between consecutive sensor reads. | `2` |
 | `SENSOR_RETRY_DELAY` | Seconds to wait before retrying after a failed sensor read. | `3` |
 | `MAX_SENSOR_ATTEMPTS` | Number of sensor read attempts before the controller reports a fatal error. | `3` |

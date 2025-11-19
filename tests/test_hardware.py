@@ -46,8 +46,9 @@ def test_initialize_display_failure(monkeypatch):
 def test_initialize_hardware_returns_components(monkeypatch):
     components = hardware.initialize_hardware()
 
-    sensor, relay, display = components
+    sensor, relay, fan_relay, display = components
 
     assert isinstance(sensor, dht.DHT11)
     assert isinstance(relay, machine.Pin)
+    assert isinstance(fan_relay, machine.Pin)
     assert display is None or isinstance(display, ssd1306.SSD1306_I2C)

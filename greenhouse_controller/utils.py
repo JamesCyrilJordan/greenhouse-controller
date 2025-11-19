@@ -4,6 +4,7 @@ import time
 
 LOW_THRESHOLD = 50.0  # °F
 HIGH_THRESHOLD = 55.0  # °F
+FAN_THRESHOLD = 80.0  # °F
 POLL_INTERVAL = 2  # seconds between measurements
 SENSOR_RETRY_DELAY = 3  # seconds before retrying after error
 MAX_SENSOR_ATTEMPTS = 3
@@ -17,6 +18,7 @@ __all__ = [
     "POLL_INTERVAL",
     "SENSOR_RETRY_DELAY",
     "MAX_SENSOR_ATTEMPTS",
+    "FAN_THRESHOLD",
     "current_millis",
     "log",
     "validate_config",
