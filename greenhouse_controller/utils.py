@@ -7,6 +7,8 @@ HIGH_THRESHOLD = 55.0  # °F
 POLL_INTERVAL = 2  # seconds between measurements
 SENSOR_RETRY_DELAY = 3  # seconds before retrying after error
 MAX_SENSOR_ATTEMPTS = 3
+COOLDOWN_INTERVAL = 10 * 60  # seconds between mandatory cooldowns
+COOLDOWN_DURATION = 60  # seconds the heater must remain off during cooldown
 
 
 __all__ = [
@@ -18,6 +20,8 @@ __all__ = [
     "current_millis",
     "log",
     "validate_config",
+    "COOLDOWN_INTERVAL",
+    "COOLDOWN_DURATION",
 ]
 
 
