@@ -7,102 +7,15 @@ from pathlib import Path
 
 import pytest
 
-
-def _install_stub_modules():
-    """Provide stub versions of the hardware-specific modules."""
-    if "machine" not in sys.modules:
-        machine_module = types.ModuleType("machine")
-
-        class Pin:
-            OUT = 0
-
-            def __init__(self, pin_number, mode=None):
-                self.pin_number = pin_number
-                self.mode = mode
-                self._value = 1
-
-            def value(self, new_value=None):
-                if new_value is None:
-                    return self._value
-                self._value = new_value
-
-        class I2C:
-            def __init__(self, channel, scl=None, sda=None):
-                self.channel = channel
-                self.scl = scl
-                self.sda = sda
-
-        machine_module.Pin = Pin
-        machine_module.I2C = I2C
-        sys.modules["machine"] = machine_module
-
-    if "dht" not in sys.modules:
-        dht_module = types.ModuleType("dht")
-
-        class DHT11:
-            def __init__(self, pin):
-                self.pin = pin
-
-        dht_module.DHT11 = DHT11
-        sys.modules["dht"] = dht_module
-
-    if "ssd1306" not in sys.modules:
-        ssd1306_module = types.ModuleType("ssd1306")
-
-        class SSD1306_I2C:
-            def __init__(self, width, height, i2c):
-                self.width = width
-                self.height = height
-                self.i2c = i2c
-
-            def fill(self, *_):
-                pass
-
-            def text(self, *_):
-                pass
-
-            def show(self):
-                pass
-
-        ssd1306_module.SSD1306_I2C = SSD1306_I2C
-        sys.modules["ssd1306"] = ssd1306_module
+from hardware_stubs import RelayStub, SensorStub, install_stub_modules
 
 
-_install_stub_modules()
+install_stub_modules()
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 hardware = importlib.import_module("greenhouse_controller.hardware")
 sensors = importlib.import_module("greenhouse_controller.sensors")
 utils = importlib.import_module("greenhouse_controller.utils")
 main_module = importlib.import_module("main")
-
-
-class RelayStub:
-    def __init__(self):
-        self.state = 1
-        self.values = []
-
-    def value(self, new_value=None):
-        if new_value is None:
-            return self.state
-        self.state = new_value
-        self.values.append(new_value)
-
-
-class SensorStub:
-    def __init__(self, *, temp_c, humidity, failures=None):
-        self._temp_c = temp_c
-        self._humidity = humidity
-        self._failures = list(failures or [])
-
-    def measure(self):
-        if self._failures:
-            raise self._failures.pop(0)
-
-    def temperature(self):
-        return self._temp_c
-
-    def humidity(self):
-        return self._humidity
 
 
 @pytest.fixture(autouse=True)
@@ -232,3 +145,62 @@ def test_main_enforces_periodic_cooldown(monkeypatch):
     main_module.main()
 
     assert relay.values[:3] == [0, 1, 0]
+
+
+def test_main_handles_sensor_errors_and_shutdown(monkeypatch):
+    relay = RelayStub()
+
+    class DisplayRecorder:
+        def __init__(self):
+            self.statuses = []
+            self.messages = []
+
+        def show_status(self, temp_f, humidity, heater_on):
+            self.statuses.append((temp_f, humidity, heater_on))
+
+        def show_message(self, *lines):
+            self.messages.append(lines)
+
+    display = DisplayRecorder()
+
+    events = iter(
+        [
+            ("error", None),
+            ("data", (utils.LOW_THRESHOLD - 5, 35)),
+            ("interrupt", None),
+        ]
+    )
+
+    def fake_read_environment(_sensor):
+        event, payload = next(events)
+        if event == "error":
+            raise RuntimeError("temporary failure")
+        if event == "interrupt":
+            raise KeyboardInterrupt
+        return payload
+
+    sleep_calls = []
+
+    fake_time = types.SimpleNamespace(
+        time=lambda: 0,
+        sleep=lambda seconds: sleep_calls.append(seconds),
+    )
+
+    monkeypatch.setattr(main_module, "time", fake_time)
+    monkeypatch.setattr(main_module, "POLL_INTERVAL", 0)
+    monkeypatch.setattr(main_module, "COOLDOWN_INTERVAL", 10_000)
+    monkeypatch.setattr(main_module, "COOLDOWN_DURATION", 0)
+    monkeypatch.setattr(main_module, "SENSOR_RETRY_DELAY", 5)
+    monkeypatch.setattr(main_module, "read_environment", fake_read_environment)
+    monkeypatch.setattr(main_module, "initialize_hardware", lambda: (None, relay, None))
+    monkeypatch.setattr(main_module, "DisplayManager", lambda _oled: display)
+    monkeypatch.setattr(main_module, "control_heater", hardware.control_heater)
+    monkeypatch.setattr(main_module, "validate_config", lambda: None)
+
+    main_module.main()
+
+    assert sleep_calls[:2] == [5, 0]
+    assert relay.values == [0, 1]
+    assert display.messages[0][:2] == ("Sensor error", "temporary failure")
+    assert display.statuses == [(utils.LOW_THRESHOLD - 5, 35, True)]
+    assert display.messages[-1] == ("Controller", "Shutting down")
