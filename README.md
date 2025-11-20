@@ -53,6 +53,7 @@ The key configuration values are defined near the top of `main.py`:
 | ------- | ----------- | ------- |
 | `SENSOR_PIN` | GPIO pin used for the DHT11 data line. | `15` |
 | `RELAY_PIN` | GPIO pin used to drive the relay controlling the heater. | `16` |
+| `I2C_BUS` | I²C controller number used for the OLED display. | `0` |
 | `I2C_SCL_PIN` / `I2C_SDA_PIN` | Pins for the I²C bus when using the OLED display. | `1` / `0` |
 | `LOW_THRESHOLD` | Temperature in °F at which the heater turns on. | `50.0` |
 | `HIGH_THRESHOLD` | Temperature in °F at which the heater turns off. | `55.0` |
