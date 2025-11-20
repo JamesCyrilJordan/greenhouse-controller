@@ -154,3 +154,20 @@ def test_logger_process_defers_when_wifi_down(monkeypatch, logger_module):
     logger.process()
 
     assert len(logger._buffer) == 1  # type: ignore[attr-defined]
+
+
+def test_wifi_manager_validate_callback(wifi_manager_module):
+    wifi_manager = wifi_manager_module
+
+    with pytest.raises(ValueError):
+        wifi_manager.configure(on_reconnect="not-callable")
+
+
+def test_logger_configure_sets_parameters(logger_module):
+    logger = logger_module
+
+    logger.configure(endpoint="https://logs.test", retry_interval_seconds=5, max_buffer=10)
+
+    assert logger._endpoint == "https://logs.test"  # type: ignore[attr-defined]
+    assert logger._retry_interval_ms == 5000  # type: ignore[attr-defined]
+    assert logger._max_buffer == 10  # type: ignore[attr-defined]
