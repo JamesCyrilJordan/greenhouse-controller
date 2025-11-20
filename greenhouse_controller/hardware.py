@@ -9,12 +9,14 @@ from .utils import log
 
 SENSOR_PIN = 15  # DHT data pin
 RELAY_PIN = 16  # Relay signal pin
+I2C_BUS = 0  # Default I2C controller for the OLED
 I2C_SCL_PIN = 1  # OLED clock
 I2C_SDA_PIN = 0  # OLED data
 
 __all__ = [
     "SENSOR_PIN",
     "RELAY_PIN",
+    "I2C_BUS",
     "I2C_SCL_PIN",
     "I2C_SDA_PIN",
     "initialize_hardware",
@@ -41,33 +43,65 @@ def initialize_relay(pin=None):
     return relay
 
 
-def initialize_display(scl_pin=None, sda_pin=None):
+def initialize_display(bus=None, scl_pin=None, sda_pin=None):
     """Attempt to initialise the OLED display, returning ``None`` on failure."""
+    if bus is None:
+        bus = I2C_BUS
     if scl_pin is None:
         scl_pin = I2C_SCL_PIN
     if sda_pin is None:
         sda_pin = I2C_SDA_PIN
 
     try:
-        i2c = I2C(0, scl=Pin(scl_pin), sda=Pin(sda_pin))
+        i2c = I2C(bus, scl=Pin(scl_pin), sda=Pin(sda_pin))
+    except Exception as exc:  # pragma: no cover - hardware specific
+        log(
+            "error",
+            "Display initialisation failed: {exc} (I2C{bus}, SCL=GP{scl}, SDA=GP{sda})".format(
+                exc=exc, bus=bus, scl=scl_pin, sda=sda_pin
+            ),
+        )
+        return None
+
+    try:
         addresses = set(i2c.scan())
-        preferred_addresses = (0x3C, 0x3D)
-        address = next((addr for addr in preferred_addresses if addr in addresses), None)
+    except Exception as exc:  # pragma: no cover - hardware specific
+        log(
+            "error",
+            "I2C scan failed: {exc} (I2C{bus}, SCL=GP{scl}, SDA=GP{sda})".format(
+                exc=exc, bus=bus, scl=scl_pin, sda=sda_pin
+            ),
+        )
+        return None
 
-        if address is None:
-            log(
-                "error",
-                "Display not detected on I2C0 (SCL=GP{0}, SDA=GP{1}); found {2}".format(
-                    scl_pin, sda_pin, sorted(addresses)
-                ),
-            )
-            return None
+    preferred_addresses = (0x3C, 0x3D)
+    address = next((addr for addr in preferred_addresses if addr in addresses), None)
 
+    if address is None:
+        log(
+            "error",
+            "Display not detected on I2C{bus} (SCL=GP{scl}, SDA=GP{sda}); found {found}".format(
+                bus=bus, scl=scl_pin, sda=sda_pin, found=sorted(addresses)
+            ),
+        )
+        return None
+
+    try:
         oled = ssd1306.SSD1306_I2C(128, 64, i2c, addr=address)
-        log("info", "Display initialised at address 0x{0:02X}".format(address))
+        log(
+            "info",
+            "Display initialised at address 0x{addr:02X} on I2C{bus} (SCL=GP{scl}, SDA=GP{sda})".format(
+                addr=address, bus=bus, scl=scl_pin, sda=sda_pin
+            ),
+        )
         return oled
     except Exception as exc:  # pragma: no cover - exercised via behaviour
-        log("error", "Display initialisation failed: {exc}".format(exc=exc))
+        log(
+            "error",
+            "Display initialisation failed: {exc} (I2C{bus}, SCL=GP{scl}, SDA=GP{sda})".format(
+                exc=exc, bus=bus, scl=scl_pin, sda=sda_pin
+            ),
+        )
         return None
 
 

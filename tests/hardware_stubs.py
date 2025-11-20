@@ -57,11 +57,14 @@ def install_stub_modules():
                 self._value = new_value
 
         class I2C:
+            last_init = None
+
             def __init__(self, channel, scl=None, sda=None):
                 self.channel = channel
                 self.scl = scl
                 self.sda = sda
                 self._addresses = [0x3C]
+                type(self).last_init = {"channel": channel, "scl": scl, "sda": sda}
 
             def scan(self):
                 return list(self._addresses)

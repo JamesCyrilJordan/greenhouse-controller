@@ -21,7 +21,12 @@ def test_initialize_display_success(monkeypatch):
     oled = hardware.initialize_display()
 
     assert isinstance(oled, ssd1306.SSD1306_I2C)
-    assert logs == [("info", "Display initialised at address 0x3C")]
+    assert logs == [
+        (
+            "info",
+            "Display initialised at address 0x3C on I2C0 (SCL=GP1, SDA=GP0)",
+        )
+    ]
 
 
 def test_initialize_display_failure(monkeypatch):
@@ -40,7 +45,31 @@ def test_initialize_display_failure(monkeypatch):
     oled = hardware.initialize_display()
 
     assert oled is None
-    assert logs == [("error", "Display initialisation failed: boom")]
+    assert logs == [
+        ("error", "Display initialisation failed: boom (I2C0, SCL=GP1, SDA=GP0)")
+    ]
+
+
+def test_initialize_display_custom_bus(monkeypatch):
+    logs = []
+    monkeypatch.setattr(
+        "greenhouse_controller.hardware.log",
+        lambda level, message: logs.append((level, message)),
+    )
+
+    oled = hardware.initialize_display(bus=1, scl_pin=5, sda_pin=4)
+
+    assert isinstance(oled, ssd1306.SSD1306_I2C)
+    last_init = machine.I2C.last_init
+    assert last_init["channel"] == 1
+    assert last_init["scl"].pin_number == 5
+    assert last_init["sda"].pin_number == 4
+    assert logs == [
+        (
+            "info",
+            "Display initialised at address 0x3C on I2C1 (SCL=GP5, SDA=GP4)",
+        )
+    ]
 
 
 def test_initialize_hardware_returns_components(monkeypatch):
