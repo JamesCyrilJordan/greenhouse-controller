@@ -1,13 +1,16 @@
 """Hardware initialisation and actuator control for the greenhouse controller."""
 
 from machine import I2C, Pin
-import dht
 import ssd1306
+import sht31
 
 from . import utils
 from .utils import log
 
-SENSOR_PIN = 15  # DHT data pin
+SENSOR_I2C_BUS = 0  # I2C controller used for the SHT31-D sensor
+SENSOR_SCL_PIN = 1  # Sensor clock
+SENSOR_SDA_PIN = 0  # Sensor data
+SHT31_ADDRESSES = (0x44, 0x45)
 RELAY_PIN = 16  # Relay signal pin
 FAN_PIN = 17  # Fan relay signal pin
 I2C_BUS = 0  # Default I2C controller for the OLED
@@ -15,12 +18,15 @@ I2C_SCL_PIN = 1  # OLED clock
 I2C_SDA_PIN = 0  # OLED data
 
 __all__ = [
-    "SENSOR_PIN",
+    "SENSOR_I2C_BUS",
+    "SENSOR_SCL_PIN",
+    "SENSOR_SDA_PIN",
     "RELAY_PIN",
     "FAN_PIN",
     "I2C_BUS",
     "I2C_SCL_PIN",
     "I2C_SDA_PIN",
+    "SHT31Adapter",
     "initialize_hardware",
     "initialize_sensor",
     "initialize_relay",
@@ -31,11 +37,74 @@ __all__ = [
 ]
 
 
-def initialize_sensor(pin=None):
-    """Initialise and return the DHT sensor instance."""
-    if pin is None:
-        pin = SENSOR_PIN
-    return dht.DHT11(Pin(pin))
+class SHT31Adapter:
+    """Adapter that exposes a consistent interface for the SHT31-D sensor."""
+
+    def __init__(self, driver):
+        self._driver = driver
+        self._last_temp = None
+        self._last_humidity = None
+
+    def _update_cached_values(self):
+        temp = getattr(self._driver, "temperature", None)
+        humidity = getattr(self._driver, "humidity", None)
+
+        if temp is not None:
+            self._last_temp = temp
+        if humidity is not None:
+            self._last_humidity = humidity
+
+    def measure(self):
+        """Trigger a new measurement and store the results."""
+        if hasattr(self._driver, "measure"):
+            result = self._driver.measure()
+            if isinstance(result, tuple) and len(result) == 2:
+                self._last_temp, self._last_humidity = result
+                return
+            self._update_cached_values()
+            return
+
+        if hasattr(self._driver, "get_temp_humi"):
+            self._last_temp, self._last_humidity = self._driver.get_temp_humi()
+            return
+
+        raise RuntimeError("SHT31 driver does not provide a measurement method")
+
+    def temperature(self):
+        return self._last_temp
+
+    def humidity(self):
+        return self._last_humidity
+
+
+def initialize_sensor(bus=None, scl_pin=None, sda_pin=None):
+    """Initialise and return the SHT31-D sensor instance."""
+    if bus is None:
+        bus = SENSOR_I2C_BUS
+    if scl_pin is None:
+        scl_pin = SENSOR_SCL_PIN
+    if sda_pin is None:
+        sda_pin = SENSOR_SDA_PIN
+
+    i2c = I2C(bus, scl=Pin(scl_pin), sda=Pin(sda_pin))
+
+    addresses = set(i2c.scan())
+    address = next((addr for addr in SHT31_ADDRESSES if addr in addresses), None)
+    if address is None:
+        raise RuntimeError(
+            "SHT31-D not detected on I2C{bus} (SCL=GP{scl}, SDA=GP{sda}); found {found}".format(
+                bus=bus, scl=scl_pin, sda=sda_pin, found=sorted(addresses)
+            )
+        )
+
+    sensor = SHT31Adapter(sht31.SHT31(i2c, addr=address))
+    log(
+        "info",
+        "SHT31-D initialised at address 0x{addr:02X} on I2C{bus} (SCL=GP{scl}, SDA=GP{sda})".format(
+            addr=address, bus=bus, scl=scl_pin, sda=sda_pin
+        ),
+    )
+    return sensor
 
 
 def initialize_relay(pin=None):

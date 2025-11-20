@@ -19,7 +19,7 @@ class RelayStub:
 
 
 class SensorStub:
-    """A DHT-like sensor stub with configurable readings and failures."""
+    """A sensor stub with configurable readings and failures."""
 
     def __init__(self, *, temp_c, humidity, failures=None):
         self._temp_c = temp_c
@@ -58,12 +58,13 @@ def install_stub_modules():
 
         class I2C:
             last_init = None
+            default_addresses = [0x3C, 0x44]
 
             def __init__(self, channel, scl=None, sda=None):
                 self.channel = channel
                 self.scl = scl
                 self.sda = sda
-                self._addresses = [0x3C]
+                self._addresses = list(type(self).default_addresses)
                 type(self).last_init = {"channel": channel, "scl": scl, "sda": sda}
 
             def scan(self):
@@ -73,15 +74,29 @@ def install_stub_modules():
         machine_module.I2C = I2C
         sys.modules["machine"] = machine_module
 
-    if "dht" not in sys.modules:
-        dht_module = types.ModuleType("dht")
+    if "sht31" not in sys.modules:
+        sht31_module = types.ModuleType("sht31")
 
-        class DHT11:
-            def __init__(self, pin):
-                self.pin = pin
+        class SHT31:
+            def __init__(self, i2c, addr=0x44):
+                self.i2c = i2c
+                self.addr = addr
+                self.temperature = 22.0
+                self.humidity = 55.0
+                self.measure_behaviour = "attributes"
 
-        dht_module.DHT11 = DHT11
-        sys.modules["dht"] = dht_module
+            def measure(self):
+                if self.measure_behaviour == "tuple":
+                    return (self.temperature, self.humidity)
+                if self.measure_behaviour == "get_temp_humi":
+                    return self.get_temp_humi()
+                return None
+
+            def get_temp_humi(self):
+                return (self.temperature, self.humidity)
+
+        sht31_module.SHT31 = SHT31
+        sys.modules["sht31"] = sht31_module
 
     if "ssd1306" not in sys.modules:
         ssd1306_module = types.ModuleType("ssd1306")
