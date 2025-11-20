@@ -1,9 +1,9 @@
 # Greenhouse Environmental Controller
 
-This project provides a MicroPython script that monitors temperature and humidity in a small greenhouse using a DHT11 sensor. The controller keeps an electric heater within a configurable temperature band and shows live readings on a 128×64 I²C OLED display. When the display is unavailable it gracefully falls back to console logging, making the code usable both on real hardware and during local development.
+This project provides a MicroPython script that monitors temperature and humidity in a small greenhouse using an SHT31-D sensor. The controller keeps an electric heater within a configurable temperature band and shows live readings on a 128×64 I²C OLED display. When the display is unavailable it gracefully falls back to console logging, making the code usable both on real hardware and during local development.
 
 ## Features
-- Periodically samples a DHT11 temperature/humidity sensor with retry logic for transient failures.
+- Periodically samples an SHT31-D temperature/humidity sensor with retry logic for transient failures.
 - Drives relays connected to both a heater and a ventilation fan to keep the greenhouse within a target temperature range.
 - Presents status information on an SSD1306 OLED display (or logs to the console if the display is missing).
 - Validates configuration at start-up to avoid misconfigured thresholds.
@@ -11,7 +11,7 @@ This project provides a MicroPython script that monitors temperature and humidit
 
 ## Hardware requirements
 - Raspberry Pi Pico or Pico W running MicroPython.
-- DHT11 sensor module connected to the GPIO pin defined in `SENSOR_PIN` (default `GP15`).
+- SHT31-D sensor module connected via I²C using `SENSOR_SCL_PIN`/`SENSOR_SDA_PIN` (defaults `GP1`/`GP0`).
 - Relay modules wired to `RELAY_PIN` (default `GP16`) for the heater and `FAN_PIN` (default `GP17`) for the fan. The script assumes active-low relays (setting the pin LOW energises the device).
 - Optional 128×64 SSD1306 OLED display connected via I²C (default pins `GP0` for SDA and `GP1` for SCL).
 
@@ -54,7 +54,7 @@ The key configuration values are defined near the top of `main.py`:
 
 | Setting | Description | Default |
 | ------- | ----------- | ------- |
-| `SENSOR_PIN` | GPIO pin used for the DHT11 data line. | `15` |
+| `SENSOR_SCL_PIN` / `SENSOR_SDA_PIN` | Pins for the I²C bus used by the SHT31-D sensor. | `1` / `0` |
 | `RELAY_PIN` | GPIO pin used to drive the relay controlling the heater. | `16` |
 | `FAN_PIN` | GPIO pin used to drive the relay controlling the ventilation fan. | `17` |
 | `I2C_BUS` | I²C controller number used for the OLED display. | `0` |
