@@ -21,7 +21,7 @@ def test_initialize_display_success(monkeypatch):
     oled = hardware.initialize_display()
 
     assert isinstance(oled, ssd1306.SSD1306_I2C)
-    assert logs == [("info", "Display initialised")]
+    assert logs == [("info", "Display initialised at address 0x3C")]
 
 
 def test_initialize_display_failure(monkeypatch):

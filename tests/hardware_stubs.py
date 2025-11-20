@@ -61,6 +61,10 @@ def install_stub_modules():
                 self.channel = channel
                 self.scl = scl
                 self.sda = sda
+                self._addresses = [0x3C]
+
+            def scan(self):
+                return list(self._addresses)
 
         machine_module.Pin = Pin
         machine_module.I2C = I2C
@@ -80,10 +84,11 @@ def install_stub_modules():
         ssd1306_module = types.ModuleType("ssd1306")
 
         class SSD1306_I2C:
-            def __init__(self, width, height, i2c):
+            def __init__(self, width, height, i2c, addr=0x3C):
                 self.width = width
                 self.height = height
                 self.i2c = i2c
+                self.addr = addr
 
             def fill(self, *_):
                 pass

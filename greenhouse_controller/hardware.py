@@ -50,8 +50,21 @@ def initialize_display(scl_pin=None, sda_pin=None):
 
     try:
         i2c = I2C(0, scl=Pin(scl_pin), sda=Pin(sda_pin))
-        oled = ssd1306.SSD1306_I2C(128, 64, i2c)
-        log("info", "Display initialised")
+        addresses = set(i2c.scan())
+        preferred_addresses = (0x3C, 0x3D)
+        address = next((addr for addr in preferred_addresses if addr in addresses), None)
+
+        if address is None:
+            log(
+                "error",
+                "Display not detected on I2C0 (SCL=GP{0}, SDA=GP{1}); found {2}".format(
+                    scl_pin, sda_pin, sorted(addresses)
+                ),
+            )
+            return None
+
+        oled = ssd1306.SSD1306_I2C(128, 64, i2c, addr=address)
+        log("info", "Display initialised at address 0x{0:02X}".format(address))
         return oled
     except Exception as exc:  # pragma: no cover - exercised via behaviour
         log("error", "Display initialisation failed: {exc}".format(exc=exc))
