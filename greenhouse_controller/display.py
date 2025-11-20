@@ -26,13 +26,15 @@ class DisplayManager:
             log("warn", fallback_message)
             return False
 
-    def show_status(self, temp_f, humidity, heater_on):
+    def show_status(self, temp_f, humidity, heater_on, fan_on):
         heater_label = "ON" if heater_on else "OFF"
+        fan_label = "ON" if fan_on else "OFF"
         message = (
-            "Temp: {temp:.1f}°F | Humidity: {hum:.1f}% | Heater: {heater}".format(
+            "Temp: {temp:.1f}°F | Humidity: {hum:.1f}% | Heater: {heater} | Fan: {fan}".format(
                 temp=temp_f,
                 hum=humidity,
                 heater=heater_label,
+                fan=fan_label,
             )
         )
 
@@ -46,6 +48,7 @@ class DisplayManager:
             self._oled.text("Temp: {:.1f} F".format(temp_f), 0, 20)
             self._oled.text("Hum:  {:.1f} %".format(humidity), 0, 35)
             self._oled.text("Heater: {}".format(heater_label), 0, 50)
+            self._oled.text("Fan: {}".format(fan_label), 64, 50)
             self._oled.show()
 
         if self._safe_call(draw, "Display unavailable; status logged to console"):

@@ -57,6 +57,20 @@ def test_control_heater_keeps_state_within_band():
     assert relay.values == []
 
 
+def test_control_fan_turns_on_and_off_with_hysteresis():
+    fan = RelayStub()
+
+    fan_on = hardware.control_fan(fan, False, utils.FAN_THRESHOLD + 5)
+
+    assert fan_on is True
+    assert fan.values == [0]
+
+    fan_on = hardware.control_fan(fan, fan_on, utils.FAN_THRESHOLD - 2)
+
+    assert fan_on is False
+    assert fan.values[-1] == 1
+
+
 def test_read_environment_retries_then_succeeds():
     sensor = SensorStub(
         temp_c=20,
@@ -94,6 +108,7 @@ def test_validate_config_rejects_invalid_thresholds(monkeypatch):
 
 def test_main_enforces_periodic_cooldown(monkeypatch):
     relay = RelayStub()
+    fan = RelayStub()
     sensor = SensorStub(temp_c=5, humidity=40)
 
     class DisplayStub:
@@ -101,8 +116,8 @@ def test_main_enforces_periodic_cooldown(monkeypatch):
             self.statuses = []
             self.messages = []
 
-        def show_status(self, temp_f, humidity, heater_on):
-            self.statuses.append((temp_f, humidity, heater_on))
+        def show_status(self, temp_f, humidity, heater_on, fan_on):
+            self.statuses.append((temp_f, humidity, heater_on, fan_on))
 
         def show_message(self, *lines):
             self.messages.append(lines)
@@ -128,7 +143,7 @@ def test_main_enforces_periodic_cooldown(monkeypatch):
     monkeypatch.setattr(
         main_module,
         "initialize_hardware",
-        lambda: (sensor, relay, None),
+        lambda: (sensor, relay, fan, None),
     )
     monkeypatch.setattr(main_module, "DisplayManager", DisplayStub)
 
@@ -145,18 +160,20 @@ def test_main_enforces_periodic_cooldown(monkeypatch):
     main_module.main()
 
     assert relay.values[:3] == [0, 1, 0]
+    assert fan.values[0] == 1  # stays off in cool conditions
 
 
 def test_main_handles_sensor_errors_and_shutdown(monkeypatch):
     relay = RelayStub()
+    fan = RelayStub()
 
     class DisplayRecorder:
         def __init__(self):
             self.statuses = []
             self.messages = []
 
-        def show_status(self, temp_f, humidity, heater_on):
-            self.statuses.append((temp_f, humidity, heater_on))
+        def show_status(self, temp_f, humidity, heater_on, fan_on):
+            self.statuses.append((temp_f, humidity, heater_on, fan_on))
 
         def show_message(self, *lines):
             self.messages.append(lines)
@@ -192,7 +209,7 @@ def test_main_handles_sensor_errors_and_shutdown(monkeypatch):
     monkeypatch.setattr(main_module, "COOLDOWN_DURATION", 0)
     monkeypatch.setattr(main_module, "SENSOR_RETRY_DELAY", 5)
     monkeypatch.setattr(main_module, "read_environment", fake_read_environment)
-    monkeypatch.setattr(main_module, "initialize_hardware", lambda: (None, relay, None))
+    monkeypatch.setattr(main_module, "initialize_hardware", lambda: (None, relay, fan, None))
     monkeypatch.setattr(main_module, "DisplayManager", lambda _oled: display)
     monkeypatch.setattr(main_module, "control_heater", hardware.control_heater)
     monkeypatch.setattr(main_module, "validate_config", lambda: None)
@@ -201,6 +218,7 @@ def test_main_handles_sensor_errors_and_shutdown(monkeypatch):
 
     assert sleep_calls[:2] == [5, 0]
     assert relay.values == [0, 1]
+    assert fan.values == [1]  # off on shutdown
     assert display.messages[0][:2] == ("Sensor error", "temporary failure")
-    assert display.statuses == [(utils.LOW_THRESHOLD - 5, 35, True)]
+    assert display.statuses == [(utils.LOW_THRESHOLD - 5, 35, True, False)]
     assert display.messages[-1] == ("Controller", "Shutting down")

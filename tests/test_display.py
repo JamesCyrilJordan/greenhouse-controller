@@ -35,10 +35,13 @@ def test_show_status_draws_and_logs(monkeypatch):
     oled = OledRecorder()
     manager = DisplayManager(oled)
 
-    manager.show_status(72.5, 55.0, True)
+    manager.show_status(72.5, 55.0, True, False)
 
     assert oled.draw_calls == 1
-    assert ("info", "Temp: 72.5°F | Humidity: 55.0% | Heater: ON") in logs
+    assert (
+        "info",
+        "Temp: 72.5°F | Humidity: 55.0% | Heater: ON | Fan: OFF",
+    ) in logs
 
 
 def test_show_status_falls_back_after_failure(monkeypatch):
@@ -50,12 +53,15 @@ def test_show_status_falls_back_after_failure(monkeypatch):
     oled = OledRecorder(fail=True)
     manager = DisplayManager(oled)
 
-    manager.show_status(65.0, 40.0, False)
-    manager.show_status(65.0, 40.0, False)
+    manager.show_status(65.0, 40.0, False, True)
+    manager.show_status(65.0, 40.0, False, True)
 
     assert ("error", "Display failure: i2c error") in logs
     assert ("warn", "Display unavailable; status logged to console") in logs
-    assert logs[-1] == ("info", "Temp: 65.0°F | Humidity: 40.0% | Heater: OFF")
+    assert logs[-1] == (
+        "info",
+        "Temp: 65.0°F | Humidity: 40.0% | Heater: OFF | Fan: ON",
+    )
 
 
 def test_show_message_logs_when_no_display(monkeypatch):

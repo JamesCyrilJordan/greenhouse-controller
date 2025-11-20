@@ -3,7 +3,11 @@
 import time
 
 from greenhouse_controller.display import DisplayManager
-from greenhouse_controller.hardware import control_heater, initialize_hardware
+from greenhouse_controller.hardware import (
+    control_fan,
+    control_heater,
+    initialize_hardware,
+)
 from greenhouse_controller.sensors import read_environment
 from greenhouse_controller.utils import (
     COOLDOWN_DURATION,
@@ -18,9 +22,10 @@ from greenhouse_controller.utils import (
 def main():
     """Run the greenhouse controller loop."""
     validate_config()
-    sensor, relay, oled = initialize_hardware()
+    sensor, relay, fan_relay, oled = initialize_hardware()
     display = DisplayManager(oled)
     heater_on = False
+    fan_on = False
     cooldown_active = False
     cooldown_start = None
     last_cooldown_end = time.time()
@@ -36,6 +41,8 @@ def main():
 
             now = time.time()
 
+            fan_on = control_fan(fan_relay, fan_on, temp_f)
+
             if cooldown_active:
                 if now - cooldown_start >= COOLDOWN_DURATION:
                     cooldown_active = False
@@ -45,7 +52,7 @@ def main():
                     if heater_on:
                         relay.value(1)
                         heater_on = False
-                    display.show_status(temp_f, humidity, heater_on)
+                    display.show_status(temp_f, humidity, heater_on, fan_on)
                     time.sleep(POLL_INTERVAL)
                     continue
 
@@ -56,17 +63,18 @@ def main():
                     relay.value(1)
                 heater_on = False
                 log("info", "Scheduled heater cooldown started")
-                display.show_status(temp_f, humidity, heater_on)
+                display.show_status(temp_f, humidity, heater_on, fan_on)
                 time.sleep(POLL_INTERVAL)
                 continue
 
             heater_on = control_heater(relay, heater_on, temp_f)
-            display.show_status(temp_f, humidity, heater_on)
+            display.show_status(temp_f, humidity, heater_on, fan_on)
             time.sleep(POLL_INTERVAL)
     except KeyboardInterrupt:
         log("info", "Shutdown requested")
     finally:
         relay.value(1)
+        fan_relay.value(1)
         display.show_message("Controller", "Shutting down")
         log("info", "Heater turned OFF; exiting")
 
