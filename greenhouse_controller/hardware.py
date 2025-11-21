@@ -13,9 +13,9 @@ SENSOR_SDA_PIN = 0  # Sensor data
 SHT31_ADDRESSES = (0x44, 0x45)
 RELAY_PIN = 16  # Relay signal pin
 FAN_PIN = 17  # Fan relay signal pin
-I2C_BUS = 0  # Default I2C controller for the OLED
-I2C_SCL_PIN = 1  # OLED clock
-I2C_SDA_PIN = 0  # OLED data
+I2C_BUS = 1  # Default I2C controller for the OLED
+I2C_SCL_PIN = 5  # OLED clock
+I2C_SDA_PIN = 4  # OLED data
 
 __all__ = [
     "SENSOR_I2C_BUS",

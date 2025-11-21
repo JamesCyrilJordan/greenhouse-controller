@@ -25,7 +25,7 @@ def test_initialize_display_success(monkeypatch):
     assert logs == [
         (
             "info",
-            "Display initialised at address 0x3C on I2C0 (SCL=GP1, SDA=GP0)",
+            "Display initialised at address 0x3C on I2C1 (SCL=GP5, SDA=GP4)",
         )
     ]
 
@@ -47,7 +47,7 @@ def test_initialize_display_failure(monkeypatch):
 
     assert oled is None
     assert logs == [
-        ("error", "Display initialisation failed: boom (I2C0, SCL=GP1, SDA=GP0)")
+        ("error", "Display initialisation failed: boom (I2C1, SCL=GP5, SDA=GP4)")
     ]
 
 
@@ -58,17 +58,17 @@ def test_initialize_display_custom_bus(monkeypatch):
         lambda level, message: logs.append((level, message)),
     )
 
-    oled = hardware.initialize_display(bus=1, scl_pin=5, sda_pin=4)
+    oled = hardware.initialize_display(bus=0, scl_pin=3, sda_pin=2)
 
     assert isinstance(oled, ssd1306.SSD1306_I2C)
     last_init = machine.I2C.last_init
-    assert last_init["channel"] == 1
-    assert last_init["scl"].pin_number == 5
-    assert last_init["sda"].pin_number == 4
+    assert last_init["channel"] == 0
+    assert last_init["scl"].pin_number == 3
+    assert last_init["sda"].pin_number == 2
     assert logs == [
         (
             "info",
-            "Display initialised at address 0x3C on I2C1 (SCL=GP5, SDA=GP4)",
+            "Display initialised at address 0x3C on I2C0 (SCL=GP3, SDA=GP2)",
         )
     ]
 
