@@ -89,7 +89,11 @@ def initialize_sensor(bus=None, scl_pin=None, sda_pin=None):
     i2c = I2C(bus, scl=Pin(scl_pin), sda=Pin(sda_pin))
 
     addresses = set(i2c.scan())
-    address = next((addr for addr in SHT31_ADDRESSES if addr in addresses), None)
+    address = None
+    for candidate in SHT31_ADDRESSES:
+        if candidate in addresses:
+            address = candidate
+            break
     if address is None:
         raise RuntimeError(
             "SHT31-D not detected on I2C{bus} (SCL=GP{scl}, SDA=GP{sda}); found {found}".format(
