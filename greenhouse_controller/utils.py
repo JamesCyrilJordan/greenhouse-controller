@@ -2,14 +2,28 @@
 
 import time
 
-LOW_THRESHOLD = 50.0  # °F
-HIGH_THRESHOLD = 55.0  # °F
-FAN_THRESHOLD = 80.0  # °F
-POLL_INTERVAL = 2  # seconds between measurements
-SENSOR_RETRY_DELAY = 3  # seconds before retrying after error
-MAX_SENSOR_ATTEMPTS = 3
-COOLDOWN_INTERVAL = 10 * 60  # seconds between mandatory cooldowns
-COOLDOWN_DURATION = 60  # seconds the heater must remain off during cooldown
+# Import configuration from secrets.py with fallback defaults
+try:
+    from secrets import (
+        LOW_THRESHOLD,
+        HIGH_THRESHOLD,
+        FAN_THRESHOLD,
+        POLL_INTERVAL,
+        SENSOR_RETRY_DELAY,
+        MAX_SENSOR_ATTEMPTS,
+        COOLDOWN_INTERVAL,
+        COOLDOWN_DURATION,
+    )
+except ImportError:
+    # Fallback defaults if secrets.py doesn't define these
+    LOW_THRESHOLD = 50.0  # °F
+    HIGH_THRESHOLD = 55.0  # °F
+    FAN_THRESHOLD = 80.0  # °F
+    POLL_INTERVAL = 2  # seconds between measurements
+    SENSOR_RETRY_DELAY = 3  # seconds before retrying after error
+    MAX_SENSOR_ATTEMPTS = 3
+    COOLDOWN_INTERVAL = 10 * 60  # seconds between mandatory cooldowns
+    COOLDOWN_DURATION = 60  # seconds the heater must remain off during cooldown
 
 
 __all__ = [

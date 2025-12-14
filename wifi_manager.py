@@ -39,11 +39,15 @@ except ImportError:  # pragma: no cover - not available in host env
     network = None
 
 try:
-    from secrets import SSID, PASSWORD
+    from secrets import SSID, PASSWORD, ENABLE_WIFI
 except ImportError as exc:  # pragma: no cover
-    raise RuntimeError("secrets.py must define SSID and PASSWORD") from exc
+    try:
+        from secrets import SSID, PASSWORD
+        ENABLE_WIFI = True  # Default to enabled if not specified
+    except ImportError:
+        raise RuntimeError("secrets.py must define SSID and PASSWORD") from exc
 
-_wlan = network.WLAN(network.STA_IF) if network else None
+_wlan = network.WLAN(network.STA_IF) if network and ENABLE_WIFI else None
 if _wlan:
     _wlan.active(True)
 
@@ -65,6 +69,8 @@ def configure(reconnect_interval_seconds=10, on_reconnect=None):
 def is_connected():
     """Return True when the STA interface is connected to Wi-Fi."""
 
+    if not ENABLE_WIFI:
+        return False
     return bool(_wlan and _wlan.isconnected())
 
 
@@ -85,6 +91,9 @@ def connect(max_attempts=5, attempt_delay=2):
     """Connect to Wi-Fi with retries; returns True on success."""
 
     global _last_reconnect_attempt
+
+    if not ENABLE_WIFI:
+        return False
 
     if not _wlan:
         raise RuntimeError("network module unavailable on this platform")
@@ -114,6 +123,9 @@ def maintain_connection():
     """Poll this from the main loop to keep Wi-Fi alive without blocking."""
 
     global _last_reconnect_attempt
+
+    if not ENABLE_WIFI:
+        return
 
     if not _wlan or _reconnect_interval_ms <= 0:
         return
