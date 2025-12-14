@@ -7,6 +7,21 @@ import sht31
 from . import utils
 from .utils import log
 
+# Import enable flags from secrets, with defaults
+try:
+    from secrets import (
+        ENABLE_SENSOR,
+        ENABLE_HEATER,
+        ENABLE_FAN,
+        ENABLE_DISPLAY,
+    )
+except ImportError:
+    # Default to all enabled if not specified
+    ENABLE_SENSOR = True
+    ENABLE_HEATER = True
+    ENABLE_FAN = True
+    ENABLE_DISPLAY = True
+
 SENSOR_I2C_BUS = 0  # I2C controller used for the SHT31-D sensor
 SENSOR_SCL_PIN = 1  # Sensor clock
 SENSOR_SDA_PIN = 0  # Sensor data
@@ -78,7 +93,14 @@ class SHT31Adapter:
 
 
 def initialize_sensor(bus=None, scl_pin=None, sda_pin=None):
-    """Initialise and return the SHT31-D sensor instance."""
+    """Initialise and return the SHT31-D sensor instance.
+    
+    Returns None if ENABLE_SENSOR is False in secrets.py.
+    """
+    if not ENABLE_SENSOR:
+        log("info", "Sensor disabled in configuration")
+        return None
+        
     if bus is None:
         bus = SENSOR_I2C_BUS
     if scl_pin is None:
@@ -112,7 +134,14 @@ def initialize_sensor(bus=None, scl_pin=None, sda_pin=None):
 
 
 def initialize_relay(pin=None):
-    """Initialise the relay output pin."""
+    """Initialise the relay output pin.
+    
+    Returns None if ENABLE_HEATER is False in secrets.py.
+    """
+    if not ENABLE_HEATER:
+        log("info", "Heater relay disabled in configuration")
+        return None
+        
     if pin is None:
         pin = RELAY_PIN
     relay = Pin(pin, Pin.OUT)
@@ -121,7 +150,14 @@ def initialize_relay(pin=None):
 
 
 def initialize_fan(pin=None):
-    """Initialise the fan relay output pin."""
+    """Initialise the fan relay output pin.
+    
+    Returns None if ENABLE_FAN is False in secrets.py.
+    """
+    if not ENABLE_FAN:
+        log("info", "Fan relay disabled in configuration")
+        return None
+        
     if pin is None:
         pin = FAN_PIN
     fan_relay = Pin(pin, Pin.OUT)
@@ -131,8 +167,14 @@ def initialize_fan(pin=None):
 
 
 def initialize_display(bus=None, scl_pin=None, sda_pin=None):
-
-    """Attempt to initialise the OLED display, returning ``None`` on failure."""
+    """Attempt to initialise the OLED display, returning ``None`` on failure.
+    
+    Returns None immediately if ENABLE_DISPLAY is False in secrets.py.
+    """
+    if not ENABLE_DISPLAY:
+        log("info", "Display disabled in configuration")
+        return None
+        
     if bus is None:
         bus = I2C_BUS
     if scl_pin is None:
@@ -204,7 +246,13 @@ def initialize_hardware():
 
 
 def control_heater(relay, heater_on, temp_f):
-    """Toggle the heater relay based on the measured temperature."""
+    """Toggle the heater relay based on the measured temperature.
+    
+    Returns heater_on unchanged if relay is None (disabled).
+    """
+    if relay is None:
+        return heater_on
+        
     low_threshold = utils.LOW_THRESHOLD
     high_threshold = utils.HIGH_THRESHOLD
 
@@ -222,7 +270,13 @@ def control_heater(relay, heater_on, temp_f):
 
 
 def control_fan(fan_relay, fan_on, temp_f):
-    """Toggle the fan relay based on the measured temperature."""
+    """Toggle the fan relay based on the measured temperature.
+    
+    Returns fan_on unchanged if fan_relay is None (disabled).
+    """
+    if fan_relay is None:
+        return fan_on
+        
     high_threshold = utils.FAN_THRESHOLD
     off_threshold = high_threshold - 2  # add light hysteresis to avoid chatter
 
