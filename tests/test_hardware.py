@@ -133,6 +133,34 @@ def test_initialize_sensor_raises_when_not_found(monkeypatch):
     assert "SHT31-D not detected" in str(excinfo.value)
 
 
+def test_initialize_sensor_with_micropython_next(monkeypatch):
+    import builtins
+
+    original_next = builtins.next
+
+    def single_arg_next(iterator):
+        return original_next(iterator)
+
+    monkeypatch.setattr("builtins.next", single_arg_next)
+
+    logs = []
+    monkeypatch.setattr(
+        "greenhouse_controller.hardware.log",
+        lambda level, message: logs.append((level, message)),
+    )
+
+    sensor = hardware.initialize_sensor()
+    sensor.measure()
+
+    assert sensor.temperature() == pytest.approx(22.0)
+    assert logs == [
+        (
+            "info",
+            "SHT31-D initialised at address 0x44 on I2C0 (SCL=GP1, SDA=GP0)",
+        )
+    ]
+
+
 def test_sht31_adapter_respects_driver_methods(monkeypatch):
     driver = sht31.SHT31(machine.I2C(0))
     driver.measure_behaviour = "tuple"
