@@ -65,8 +65,9 @@ Hardware pin assignments are defined in `greenhouse_controller/hardware.py`:
 | `SENSOR_SCL_PIN` / `SENSOR_SDA_PIN` | Pins for the I²C bus used by the SHT31-D sensor. | `1` / `0` |
 | `RELAY_PIN` | GPIO pin used to drive the relay controlling the heater. | `16` |
 | `FAN_PIN` | GPIO pin used to drive the relay controlling the ventilation fan. | `17` |
-| `I2C_BUS` | I²C controller number used for the OLED display. | `1` |
+| `I2C_BUS` | I²C controller number used for the OLED display. | `0` |
 | `I2C_SCL_PIN` / `I2C_SDA_PIN` | Pins for the I²C bus when using the OLED display. | `5` / `4` |
+| | **Note:** GPIO 4/5 on Raspberry Pi Pico maps to I2C(0), not I2C(1). | |
 
 ### Operational Configuration
 
