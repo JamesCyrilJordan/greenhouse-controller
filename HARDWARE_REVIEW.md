@@ -34,7 +34,7 @@ This document provides a comprehensive review of all hardware pin configurations
 - **Status:** ✅ Optional - can be disabled if not needed
 
 ### SSD1306 OLED Display
-- **I2C Bus:** 1
+- **I2C Bus:** 0 (⚠️ **FIXED:** was incorrectly set to 1)
 - **SCL Pin:** GP5 (GPIO 5)
 - **SDA Pin:** GP4 (GPIO 4)
 - **I2C Addresses:** 0x3C, 0x3D (auto-detected)
@@ -43,6 +43,7 @@ This document provides a comprehensive review of all hardware pin configurations
 - **Constants:** `I2C_BUS`, `I2C_SCL_PIN`, `I2C_SDA_PIN`
 - **Enable Flag:** `ENABLE_DISPLAY` in `secrets.py` (default: `True`)
 - **Status:** ✅ Optional - gracefully falls back to console logging if disabled or unavailable
+- **Note:** GPIO 4/5 on Raspberry Pi Pico maps to I2C(0), not I2C(1). I2C(1) uses GPIO 6/7 or 26/27.
 
 ### Wi-Fi (Pico W only)
 - **Module:** Built-in Wi-Fi on Raspberry Pi Pico W
@@ -53,10 +54,10 @@ This document provides a comprehensive review of all hardware pin configurations
 
 ## Pin Conflict Analysis
 
-### I2C Bus Separation
+### I2C Bus Configuration
 - **Sensor I2C Bus (0):** Uses GP0 (SDA) and GP1 (SCL)
-- **Display I2C Bus (1):** Uses GP4 (SDA) and GP5 (SCL)
-- **Status:** ✅ No conflicts - sensor and display use separate I2C buses
+- **Display I2C Bus (0):** Uses GP4 (SDA) and GP5 (SCL)
+- **Status:** ✅ Both devices use I2C(0) but with different GPIO pins. MicroPython allows multiple I2C instances on the same bus with different pin mappings. Both devices can coexist as they have different I2C addresses.
 
 ### GPIO Pin Usage
 - **GP0:** Sensor SDA (I2C Bus 0)
